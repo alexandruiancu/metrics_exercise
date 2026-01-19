@@ -1,6 +1,6 @@
 module me/bldrec
 
-go 1.25.5
+go 1.24.4
 
 replace me/common => ../common
 
