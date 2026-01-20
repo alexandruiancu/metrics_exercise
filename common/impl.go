@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
-func ReadConfig(filepath string) map[string]string {
+func ReadConfig(cfgFilePath string) map[string]string {
 	config := make(map[string]string)
-	file, err := os.Open(filepath)
+	file, err := os.Open(cfgFilePath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,5 +24,6 @@ func ReadConfig(filepath string) map[string]string {
 			config[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 		}
 	}
+	config["configDir"] = filepath.Dir(cfgFilePath)
 	return config
 }
