@@ -11,6 +11,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/driver",
+            "args": ["${workspaceFolder}/config.txt"]
         }
     ]
 }
