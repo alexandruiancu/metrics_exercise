@@ -24,6 +24,9 @@ func ReadConfig(cfgFilePath string) map[string]string {
 			config[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 		}
 	}
-	config["configDir"] = filepath.Dir(cfgFilePath)
+	if !filepath.IsAbs(config["in_dir"]) ||
+		!filepath.IsAbs(config["history_dir"]) {
+		config["configDir"] = filepath.Dir(cfgFilePath)
+	}
 	return config
 }

@@ -17,8 +17,14 @@ import (
 )
 
 func Process(config map[string]string) error {
-	inDir := filepath.Join(config["configDir"], config["in_dir"])
-	historyDir := filepath.Join(config["configDir"], config["history_dir"])
+	inDir := config["in_dir"]
+	if !filepath.IsAbs(inDir) && inDir != "" {
+		inDir = filepath.Join(config["configDir"], config["in_dir"])
+	}
+	historyDir := config["history_dir"]
+	if !filepath.IsAbs(historyDir) && historyDir != "" {
+		historyDir = filepath.Join(config["configDir"], config["history_dir"])
+	}
 
 	for true {
 		records, err := ProcessFiles(inDir, historyDir)
