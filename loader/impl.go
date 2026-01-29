@@ -14,9 +14,6 @@ import (
 	resource "go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-
 	"me/bldrec"
 
 	capnp "capnproto.org/go/capnp/v3"
@@ -26,18 +23,6 @@ import (
 var glblContext context.Context
 var glblMeterProvider *sdkmetric.MeterProvider
 var glblInstruments map[string]any
-
-func initConn() (*grpc.ClientConn, error) {
-	conn, err := grpc.NewClient("localhost:4317",
-		// Note the use of insecure transport here.
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create gRPC connection to collector: %w", err)
-	}
-
-	return conn, err
-}
 
 func createDebitView() sdkmetric.View {
 	// ---- provide view instead of instrument --------------------------------
@@ -68,12 +53,8 @@ func createResource() *resource.Resource {
 
 func CreateMetricsPipeline(ctx context.Context) error {
 
-	conn, err := initConn()
-	if err != nil {
-		return err
-	}
 	// ---- OTLP gRPC exporter ------------------------------------------------
-	grpcMetricExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(conn))
+	grpcMetricExporter, err := otlpmetricgrpc.New(ctx)
 	if err != nil {
 		return err
 	}
@@ -88,7 +69,8 @@ func CreateMetricsPipeline(ctx context.Context) error {
 		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(grpcMetricExporter)),
 		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(consoleMetricExporter)),
 		sdkmetric.WithResource(createResource()),
-		sdkmetric.WithView(createDebitView()))
+		//sdkmetric.WithView(createDebitView()),
+	)
 	otel.SetMeterProvider(glblMeterProvider)
 	glblContext = ctx
 
@@ -97,9 +79,9 @@ func CreateMetricsPipeline(ctx context.Context) error {
 
 func CreateDebitInstrument() error {
 	// ---- Create the histogram instrument ------------------------------------
-	meter := glblMeterProvider.Meter("debit-histogram")
+	meter := otel.Meter("metrics_exercise")
 	hist, err := meter.Float64Histogram(
-		"debit-histogram",
+		"debitHistogram",
 		metric.WithUnit("ron"),
 		metric.WithDescription("bank account debit in currency RON"),
 	)
