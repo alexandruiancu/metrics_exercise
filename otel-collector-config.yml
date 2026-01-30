@@ -1,0 +1,26 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 'col:4317'
+
+processors:
+  batch:
+
+exporters:
+  prometheus:
+    endpoint: 'col:8889'  # This is where metrics will be exposed
+    namespace: 'otelcol'
+
+#  otlphttp/prometheus:
+#    endpoint: "http://prometheus:9090/api/v1/otlp"
+#    tls:
+#      insecure: true
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+#      processors: [batch]
+      exporters: [prometheus]
+#      exporters: [otlphttp/prometheus]
