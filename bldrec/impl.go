@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	capnp "capnproto.org/go/capnp/v3"
@@ -54,8 +53,6 @@ func Process(config map[string]string) error {
 
 func ProcessFiles(inDir, historyDir string) ([]Record, error) {
 	var records []Record
-	var wg sync.WaitGroup
-	var mu sync.Mutex
 
 	// a) Open each text file in in_dir subdirectory
 	files, err := os.ReadDir(inDir)
@@ -70,62 +67,68 @@ func ProcessFiles(inDir, historyDir string) ([]Record, error) {
 
 		filePath := filepath.Join(inDir, file.Name())
 
+		renameCurrentFile := func() error {
+			return os.Rename(filePath, filepath.Join(historyDir, file.Name()))
+		}
 		// b) Read current file line by line and add to lines slice
-		wg.Add(1)
-		go func(filePath string) {
-			defer wg.Done()
+		recs, err := processFile1(filePath, renameCurrentFile)
+		if err != nil {
+			return records, err
+		}
+		records = append(records, recs...)
+	}
 
-			lines, err := readLines(filePath)
-			if err != nil {
-				return
-			}
+	return records, nil
+}
 
-			if err := os.Rename(filePath, filepath.Join(historyDir, filepath.Base(filePath))); err != nil {
-				return
-			}
+func processFile1(filePath string, moveToHistory func() error) ([]Record, error) {
+	var records []Record
 
-			var aggregates [][]string
-			for _, line := range lines {
-				aggregate := regexp.MustCompile(`[ \t]{3,}`).Split(line, -1)
-				if len(aggregate) > 0 {
-					aggregates = append(aggregates, aggregate)
-				}
-			}
+	lines, err := readLines(filePath)
+	if err != nil {
+		return records, err
+	}
+	if err := moveToHistory(); err != nil {
+		return records, err
+	}
+	var aggregates [][]string
+	for _, line := range lines {
+		aggregate := regexp.MustCompile(`[ \t]{3,}`).Split(line, -1)
+		if len(aggregate) > 0 {
+			aggregates = append(aggregates, aggregate)
+		}
+	}
 
-			var record []string
-			for _, aggregate := range aggregates {
-				if len(aggregate[0]) > 0 {
-					if len(record) > 0 {
-						rec, err := createRecord(record)
-						if err == nil {
-							mu.Lock()
-							records = append(records, rec)
-							mu.Unlock()
-						}
-						record = nil
-					}
-					record = aggregate
-				} else {
-					for i, field := range aggregate {
-						if len(field) == 0 {
-							continue
-						}
-						record[i] += " " + field
-					}
-				}
-			}
-			if record != nil {
+	var record []string
+	for _, aggregate := range aggregates {
+		if len(aggregate[0]) > 0 {
+			if len(record) > 0 {
 				rec, err := createRecord(record)
 				if err == nil {
 					mu.Lock()
 					records = append(records, rec)
 					mu.Unlock()
 				}
+				record = nil
 			}
-		}(filePath)
+			record = aggregate
+		} else {
+			for i, field := range aggregate {
+				if len(field) == 0 {
+					continue
+				}
+				record[i] += " " + field
+			}
+		}
 	}
-	wg.Wait()
-
+	if record != nil {
+		rec, err := createRecord(record)
+		if err == nil {
+			mu.Lock()
+			records = append(records, rec)
+			mu.Unlock()
+		}
+	}
 	return records, nil
 }
 
