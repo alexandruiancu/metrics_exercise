@@ -70,23 +70,6 @@ func buildRecords(bldRcrds []bldrec.Record) ([]array.Record, error) {
 	return records, nil
 }
 
-func StartLoadBalancer(config map[string]string) {
-	frontend, _ := zmq.NewSocket(zmq.ROUTER)
-	defer frontend.Close()
-
-	port := config["frontend_port"]
-	frontend.Bind(fmt.Sprintf("tcp://localhost:%s", port))
-
-	backend, _ := zmq.NewSocket(zmq.DEALER)
-	defer backend.Close()
-	backend.Bind("tcp://localhost:5556")
-	for i := 0; i < 5; i++ {
-		go startWorker(i)
-	}
-
-	zmq.Proxy(frontend, backend, nil)
-}
-
 func startWorker(id int) {
 	socket, _ := zmq.NewSocket(zmq.REP)
 	defer socket.Close()
