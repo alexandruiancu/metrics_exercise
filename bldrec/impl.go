@@ -71,7 +71,7 @@ func ProcessFiles(inDir, historyDir string) ([]Record, error) {
 			return os.Rename(filePath, filepath.Join(historyDir, file.Name()))
 		}
 		// b) Read current file line by line and add to lines slice
-		recs, err := processFile1(filePath, renameCurrentFile)
+		recs, err := processFile(filePath, renameCurrentFile)
 		if err != nil {
 			return records, err
 		}
@@ -81,7 +81,7 @@ func ProcessFiles(inDir, historyDir string) ([]Record, error) {
 	return records, nil
 }
 
-func processFile1(filePath string, moveToHistory func() error) ([]Record, error) {
+func processFile(filePath string, moveToHistory func() error) ([]Record, error) {
 	var records []Record
 
 	lines, err := readLines(filePath)
@@ -103,11 +103,9 @@ func processFile1(filePath string, moveToHistory func() error) ([]Record, error)
 	for _, aggregate := range aggregates {
 		if len(aggregate[0]) > 0 {
 			if len(record) > 0 {
-				rec, err := createRecord(record)
+				rec, err := capnpRecord(record)
 				if err == nil {
-					mu.Lock()
 					records = append(records, rec)
-					mu.Unlock()
 				}
 				record = nil
 			}
@@ -122,11 +120,9 @@ func processFile1(filePath string, moveToHistory func() error) ([]Record, error)
 		}
 	}
 	if record != nil {
-		rec, err := createRecord(record)
+		rec, err := capnpRecord(record)
 		if err == nil {
-			mu.Lock()
 			records = append(records, rec)
-			mu.Unlock()
 		}
 	}
 	return records, nil
@@ -147,7 +143,7 @@ func readLines(filePath string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
-func createRecord(fields []string) (Record, error) {
+func capnpRecord(fields []string) (Record, error) {
 	// Create a new message arena
 	arena := capnp.SingleSegment(nil)
 	_, seg, err := capnp.NewMessage(arena)
@@ -187,4 +183,10 @@ func createRecord(fields []string) (Record, error) {
 	}
 
 	return rec, nil
+}
+
+// will add to record batch
+func arrowRecord(fields []string) error {
+	//TODO: Implement Arrow record creation and population based on the fields array
+	return nil
 }

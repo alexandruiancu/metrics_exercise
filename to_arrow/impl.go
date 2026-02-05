@@ -94,7 +94,6 @@ func startWorker(id int) {
 		}
 		//println(desc)
 		arrowRec, _ = toArrowRecord(record)
-		// table.insertRecord(arrowRec)
 		socket.Send(fmt.Sprintf("Reply from worker %d", tmp), 0)
 	}
 }
