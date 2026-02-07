@@ -25,17 +25,17 @@ func Process(config map[string]string) error {
 		historyDir = filepath.Join(config["configDir"], config["history_dir"])
 	}
 
+	port := config["frontend_port"]
+	socket, _ := zmq.NewSocket(zmq.REQ)
+	defer socket.Close()
+	socket.Connect(fmt.Sprintf("tcp://localhost:%s", port))
 	for true {
 		records, err := ProcessFiles(inDir, historyDir)
 		if err != nil {
 			return err
 		}
 
-		port := config["frontend_port"]
 		for _, record := range records {
-			socket, _ := zmq.NewSocket(zmq.REQ)
-			defer socket.Close()
-			socket.Connect(fmt.Sprintf("tcp://localhost:%s", port))
 			// Serialize to a byte slice
 			data, err := record.Message().Marshal()
 			if err != nil {
