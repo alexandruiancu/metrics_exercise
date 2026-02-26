@@ -50,10 +50,17 @@ func toArrowRecord(rec bldrec.Record) (array.Record, error) {
 	builder := array.NewRecordBuilder(mem, schema)
 	defer builder.Release()
 
-	builder.Field(0).(*array.Int64Builder).AppendValues({rec.UDateTime()}, nil)
-	builder.Field(1).(*array.StringBuilder).AppendValues({rec.SDescription()}, nil)
-	builder.Field(2).(*array.Float32Builder).AppendValues({rec.FValue()}, nil)
-	builder.Field(3).(*array.StringBuilder).AppendValues({rec.SDontCare()}, nil)
+	handle_err := func(description string, err error) string {
+		if err != nil {
+			return ""
+		}
+
+		return description
+	}
+	builder.Field(0).(*array.Int64Builder).Append(rec.UDateTime())
+	builder.Field(1).(*array.StringBuilder).Append(handle_err(rec.SDescription()))
+	builder.Field(2).(*array.Float32Builder).Append(rec.FValue())
+	builder.Field(3).(*array.StringBuilder).Append(handle_err(rec.SDontCare()))
 
 	return builder.NewRecord(), nil
 }
@@ -63,8 +70,12 @@ func buildRecords(bldRcrds []bldrec.Record) ([]array.Record, error) {
 
 	var records []array.Record
 
-	for i, r := range bldRcrds {
-		records = append(toArrowRecord(r))
+	for _, r := range bldRcrds {
+		record, err := toArrowRecord(r)
+		if err != nil {
+			continue
+		}
+		records = append(records, record)
 	}
 
 	return records, nil
@@ -75,7 +86,7 @@ func startWorker(id int) {
 	defer socket.Close()
 	socket.Connect("tcp://localhost:5556")
 
-	table, _ := createArrowTable()
+	//table, _ := createArrowTable()
 	for {
 		zmqMsgBytes, _ := socket.RecvBytes(0)
 		// Wrap in a Cap’n Proto message (read‑only)
