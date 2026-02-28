@@ -16,8 +16,7 @@ import (
 	"github.com/apache/arrow/go/arrow/memory"
 )
 
-// Define a function to create an Arrow Table
-func createArrowTable() (*array.Table, error) {
+func getSchema() *arrow.Schema {
 
 	// Combine arrays into a schema
 	fields := []arrow.Field{
@@ -28,6 +27,19 @@ func createArrowTable() (*array.Table, error) {
 	}
 
 	schema := arrow.NewSchema(fields, nil)
+	return schema
+}
+
+func getLocalAllocator() memory.Allocator {
+
+	// Create a memory allocator
+	mem := memory.NewGoAllocator()
+	return mem
+}
+
+// Define a function to create an Arrow Table
+func createArrowTable() (array.Table, error) {
+	schema := getSchema()
 	arrowTable := array.NewTable(schema, nil, 0)
 
 	return arrowTable, nil
@@ -35,18 +47,8 @@ func createArrowTable() (*array.Table, error) {
 
 // Define a function to create an Arrow Table
 func toArrowRecord(rec bldrec.Record) (array.Record, error) {
-	// Create a memory allocator
-	mem := memory.NewGoAllocator()
-
-	// Combine arrays into a schema
-	fields := []arrow.Field{
-		{Name: "uDateTime", Type: arrow.PrimitiveTypes.Int64},
-		{Name: "sDescription", Type: arrow.BinaryTypes.String},
-		{Name: "fValue", Type: arrow.PrimitiveTypes.Float32},
-		{Name: "sDontCare", Type: arrow.BinaryTypes.String},
-	}
-
-	schema := arrow.NewSchema(fields, nil)
+	mem := getLocalAllocator()
+	schema := getSchema()
 	builder := array.NewRecordBuilder(mem, schema)
 	defer builder.Release()
 
