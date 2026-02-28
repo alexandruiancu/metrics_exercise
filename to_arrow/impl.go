@@ -89,6 +89,9 @@ func startWorker(id int) {
 	socket.Connect("tcp://localhost:5556")
 
 	//table, _ := createArrowTable()
+	// buffering
+	var allRecords []array.Record
+
 	for {
 		zmqMsgBytes, _ := socket.RecvBytes(0)
 		// Wrap in a Cap’n Proto message (read‑only)
@@ -106,7 +109,15 @@ func startWorker(id int) {
 			continue
 		}
 		//println(desc)
-		arrowRec, _ = toArrowRecord(record)
+		newArrowRecords, _ := buildRecords([]bldrec.Record{record})
+		for _, r := range newArrowRecords {
+			allRecords = append(allRecords, r)
+		}
+
 		socket.Send(fmt.Sprintf("Reply from worker %d", tmp), 0)
 	}
+
+	//TODO
+	//defer mem...
+	//defer table...
 }
