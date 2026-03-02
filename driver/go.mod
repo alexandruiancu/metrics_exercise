@@ -2,6 +2,12 @@ go 1.24.4
 
 replace me/bldrec => ../bldrec
 
+replace me/common => ../common
+
+replace me/loader => ../loader
+
+replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20251202230838-ff82c1b0f217
+
 require (
 	me/bldrec v0.0.0-00010101000000-000000000000
 	me/common v0.0.0-00010101000000-000000000000
@@ -36,9 +42,5 @@ require (
 	google.golang.org/grpc v1.78.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )
-
-replace me/common => ../common
-
-replace me/loader => ../loader
 
 module me/driver
