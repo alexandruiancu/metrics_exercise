@@ -11,69 +11,16 @@ import (
 	capnp "capnproto.org/go/capnp/v3"
 	zmq "github.com/pebbe/zmq4"
 
-	"github.com/apache/arrow/go/arrow"
 	"github.com/apache/arrow/go/arrow/array"
-	"github.com/apache/arrow/go/arrow/memory"
 )
 
-func getSchema() *arrow.Schema {
-
-	// Combine arrays into a schema
-	fields := []arrow.Field{
-		{Name: "uDateTime", Type: arrow.PrimitiveTypes.Int64},
-		{Name: "sDescription", Type: arrow.BinaryTypes.String},
-		{Name: "fValue", Type: arrow.PrimitiveTypes.Float32},
-		{Name: "sDontCare", Type: arrow.BinaryTypes.String},
-	}
-
-	schema := arrow.NewSchema(fields, nil)
-	return schema
-}
-
-func getLocalAllocator() memory.Allocator {
-
-	// Create a memory allocator
-	mem := memory.NewGoAllocator()
-	return mem
-}
-
-// Define a function to create an Arrow Table
-func createArrowTable() (array.Table, error) {
-	schema := getSchema()
-	arrowTable := array.NewTable(schema, nil, 0)
-
-	return arrowTable, nil
-}
-
-// Define a function to create an Arrow Table
-func toArrowRecord(rec bldrec.Record) (array.Record, error) {
-	mem := getLocalAllocator()
-	schema := getSchema()
-	builder := array.NewRecordBuilder(mem, schema)
-	defer builder.Release()
-
-	handle_err := func(description string, err error) string {
-		if err != nil {
-			return ""
-		}
-
-		return description
-	}
-	builder.Field(0).(*array.Int64Builder).Append(rec.UDateTime())
-	builder.Field(1).(*array.StringBuilder).Append(handle_err(rec.SDescription()))
-	builder.Field(2).(*array.Float32Builder).Append(rec.FValue())
-	builder.Field(3).(*array.StringBuilder).Append(handle_err(rec.SDontCare()))
-
-	return builder.NewRecord(), nil
-}
-
-// Define a function to create an Arrow Table
-func buildRecords(bldRcrds []bldrec.Record) ([]array.Record, error) {
+// buildRecords converts a slice of bldrec.Record using the provided ArrowStore.
+func buildRecords(as *ArrowStore, bldRcrds []bldrec.Record) ([]array.Record, error) {
 
 	var records []array.Record
 
 	for _, r := range bldRcrds {
-		record, err := toArrowRecord(r)
+		record, err := as.ToArrowRecord(r)
 		if err != nil {
 			continue
 		}
@@ -88,7 +35,7 @@ func startWorker(id int) {
 	defer socket.Close()
 	socket.Connect("tcp://localhost:5556")
 
-	//table, _ := createArrowTable()
+	store := NewArrowStore()
 	// buffering
 	var allRecords []array.Record
 
@@ -109,7 +56,7 @@ func startWorker(id int) {
 			continue
 		}
 		//println(desc)
-		newArrowRecords, _ := buildRecords([]bldrec.Record{record})
+		newArrowRecords, _ := buildRecords(store, []bldrec.Record{record})
 		for _, r := range newArrowRecords {
 			allRecords = append(allRecords, r)
 		}
@@ -117,7 +64,5 @@ func startWorker(id int) {
 		socket.Send(fmt.Sprintf("Reply from worker %d", tmp), 0)
 	}
 
-	//TODO
-	//defer mem...
-	//defer table...
+	//TODO: release store resources if necessary
 }

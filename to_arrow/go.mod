@@ -11,8 +11,15 @@ require (
 
 require (
 	github.com/colega/zeropool v0.0.0-20230505084239-6fb4a4f75381 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/google/flatbuffers v23.5.26+incompatible // indirect
+	github.com/klauspost/compress v1.16.7 // indirect
+	github.com/pierrec/lz4/v4 v4.1.18 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	golang.org/x/sync v0.18.0 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
+	gonum.org/v1/gonum v0.16.0 // indirect
 )
 
 replace me/common => ../common
