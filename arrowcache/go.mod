@@ -1,4 +1,4 @@
-module me/laarrow
+module me/arrowcache
 
 go 1.23
 

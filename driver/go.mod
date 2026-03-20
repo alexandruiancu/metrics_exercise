@@ -1,9 +1,7 @@
-go 1.23
+go 1.22
 
 replace me/bldrec => ../bldrec
-
 replace me/common => ../common
-
 replace me/loader => ../loader
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20251202230838-ff82c1b0f217

@@ -1,11 +1,9 @@
 go 1.23
 
-use ./common
-
-use ./loader
-
-use ./bldrec
-
-use ./driver
-
-use ./to_arrow
+use (
+	./bldrec
+	./common
+	./driver
+	./loader
+	./arrowcache
+)
