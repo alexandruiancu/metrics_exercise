@@ -323,3 +323,82 @@ func TestProcessFileWithMoveCallback(t *testing.T) {
 		t.Errorf("File should exist in destination: %v", err)
 	}
 }
+
+func TestProcessFileWithValidContent(t *testing.T) {
+	fp := &FileProcessor{}
+
+	// Create temporary input and history directories
+	inDir := t.TempDir()
+	historyDir := filepath.Join(inDir, "history")
+	if err := os.Mkdir(historyDir, 0755); err != nil {
+		t.Fatalf("Failed to create history directory: %v", err)
+	}
+
+	// Create a test file with valid content
+	testFile := filepath.Join(inDir, "test.txt")
+	content := "date    description    amount    extra\n"
+	content += "01/15/2026    Test Description    123.45    extra1\n"
+	content += "02/28/2026    Another Description    99.99    extra2"
+
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Mock function to move file to history
+	moveToHistory := func() error {
+		return os.Rename(testFile, filepath.Join(historyDir, "test.txt"))
+	}
+
+	records, err := fp.processFile(testFile, moveToHistory)
+	if err != nil {
+		t.Fatalf("processFile failed: %v", err)
+	}
+
+	// Verify we got 2 records
+	if len(records) != 2 {
+		t.Errorf("Expected 2 records, got %d", len(records))
+	}
+
+	// Verify file was moved to history
+	if _, err := os.Stat(testFile); err == nil {
+		t.Errorf("File should have been moved to history directory")
+	}
+
+	// Verify history file exists
+	historyFile := filepath.Join(historyDir, "test.txt")
+	if _, err := os.Stat(historyFile); err != nil {
+		t.Errorf("File should exist in history directory")
+	}
+}
+
+func TestProcessFileWithEmptyFile(t *testing.T) {
+	fp := &FileProcessor{}
+
+	// Create temporary input and history directories
+	inDir := t.TempDir()
+	historyDir := filepath.Join(inDir, "history")
+	if err := os.Mkdir(historyDir, 0755); err != nil {
+		t.Fatalf("Failed to create history directory: %v", err)
+	}
+
+	// Create an empty test file
+	testFile := filepath.Join(inDir, "empty.txt")
+	if err := os.WriteFile(testFile, []byte(""), 0644); err != nil {
+		t.Fatalf("Failed to create empty test file: %v", err)
+	}
+
+	// Mock function to move file to history
+	moveToHistory := func() error {
+		return os.Rename(testFile, filepath.Join(historyDir, "empty.txt"))
+	}
+
+	records, err := fp.processFile(testFile, moveToHistory)
+	if err != nil {
+		t.Fatalf("processFile failed: %v", err)
+	}
+
+	// Verify we got 0 records
+	if len(records) != 0 {
+		t.Errorf("Expected 0 records for empty file, got %d", len(records))
+	}
+}
