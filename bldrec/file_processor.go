@@ -103,16 +103,23 @@ func (fp *FileProcessor) ProcessFiles(inDir, historyDir string) ([]Record, error
 }
 
 func (fp *FileProcessor) processFile(filePath string, moveToHistory func() error) ([]Record, error) {
-	var records []Record
 
 	lines, err := fp.readLines(filePath)
 	if err != nil {
-		return records, err
+		// Handle error and return empty slice if there is an error reading the file
+		return []Record{}, err
 	}
 	if err := moveToHistory(); err != nil {
-		return records, err
+		return []Record{}, err
 	}
+
+	return fp.processLines(lines)
+}
+
+func (fp *FileProcessor) processLines(lines []string) ([]Record, error) {
+	var records []Record
 	var aggregates [][]string
+
 	for _, line := range lines {
 		aggregate := regexp.MustCompile(`[ \t]{3,}`).Split(line, -1)
 		if len(aggregate) > 0 {
