@@ -406,3 +406,46 @@ func TestProcessFileWithEmptyFile(t *testing.T) {
 		t.Errorf("Expected 0 records for empty file, got %d", len(records))
 	}
 }
+
+func TestProcessFileWithInvalidDateFormat(t *testing.T) {
+	fp := &FileProcessor{}
+
+	// Create temporary input and history directories
+	inDir := t.TempDir()
+	historyDir := filepath.Join(inDir, "history")
+	if err := os.Mkdir(historyDir, 0755); err != nil {
+		t.Fatalf("Failed to create history directory: %v", err)
+	}
+
+	// Create a test file with invalid date format
+	testFile := filepath.Join(inDir, "invalid_date.txt")
+	content := "date    description    amount    extra\n"
+	content += "invalid_date    Description    123.45    extra"
+
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Mock function to move file to history
+	moveToHistory := func() error {
+		return os.Rename(testFile, filepath.Join(historyDir, "invalid_date.txt"))
+	}
+
+	records, err := fp.processFile(testFile, moveToHistory)
+	if err != nil {
+		t.Fatalf("processFile failed: %v", err)
+	}
+
+	// Verify we got 1 record with default timestamp
+	if len(records) != 1 {
+		t.Errorf("Expected 1 record with default timestamp, got %d", len(records))
+	}
+
+	// Verify timestamp is set to current time
+	record := records[0]
+	uDateTime := record.UDateTime()
+	if uDateTime == 0 {
+		t.Errorf("Date should have been set to current time, got zero value")
+	}
+}
+
