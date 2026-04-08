@@ -449,3 +449,44 @@ func TestProcessFileWithInvalidDateFormat(t *testing.T) {
 	}
 }
 
+func TestProcessFileWithMissingFields(t *testing.T) {
+	fp := &FileProcessor{}
+
+	// Create temporary input and history directories
+	inDir := t.TempDir()
+	historyDir := filepath.Join(inDir, "history")
+	if err := os.Mkdir(historyDir, 0755); err != nil {
+		t.Fatalf("Failed to create history directory: %v", err)
+	}
+
+	// Create a test file with missing fields
+	testFile := filepath.Join(inDir, "missing_fields.txt")
+	content := "date    description\n"
+	content += "01/15/2026    Test Description"
+
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Mock function to move file to history
+	moveToHistory := func() error {
+		return os.Rename(testFile, filepath.Join(historyDir, "missing_fields.txt"))
+	}
+
+	records, err := fp.processFile(testFile, moveToHistory)
+	if err != nil {
+		t.Fatalf("processFile failed: %v", err)
+	}
+
+	// Verify we got 1 record with default values
+	if len(records) != 1 {
+		t.Errorf("Expected 1 record with default values, got %d", len(records))
+	}
+
+	// Verify default amount is 0.0
+	record := records[0]
+	amount := record.FValue()
+	if amount != 0.0 {
+		t.Errorf("Default amount should be 0.0, got %f", amount)
+	}
+}
