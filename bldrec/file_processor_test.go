@@ -490,3 +490,34 @@ func TestProcessFileWithMissingFields(t *testing.T) {
 		t.Errorf("Default amount should be 0.0, got %f", amount)
 	}
 }
+
+func TestProcessFileWithFileMoveError(t *testing.T) {
+	fp := &FileProcessor{}
+
+	// Create temporary input directory
+	inDir := t.TempDir()
+
+	// Create a test file
+	testFile := filepath.Join(inDir, "move_error.txt")
+	content := "date    description    amount    extra\n"
+	content += "01/15/2026    Test Description    123.45    extra"
+
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Mock function to simulate move error
+	moveToHistory := func() error {
+		return os.ErrPermission
+	}
+
+	records, err := fp.processFile(testFile, moveToHistory)
+	if err == nil {
+		t.Errorf("Expected error when moving file, got nil")
+	}
+
+	// Verify no records were created
+	if len(records) != 0 {
+		t.Errorf("Expected 0 records when move fails, got %d", len(records))
+	}
+}
