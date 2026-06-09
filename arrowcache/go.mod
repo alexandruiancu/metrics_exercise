@@ -1,6 +1,6 @@
 module me/arrowcache
 
-go 1.24
+go 1.20
 
 require (
 	capnproto.org/go/capnp/v3 v3.1.0-alpha.2

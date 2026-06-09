@@ -1,4 +1,4 @@
-go 1.24
+go 1.20
 
 replace me/bldrec => ../bldrec
 replace me/common => ../common
