@@ -101,20 +101,34 @@ func ShutdownMetric(ctx context.Context) {
 }
 
 func StartLoadBalancer(config map[string]string) {
-	frontend, _ := zmq.NewSocket(zmq.ROUTER)
+	frontend, err := zmq.NewSocket(zmq.ROUTER)
+	if err != nil {
+		log.Fatalf("failed to create frontend socket: %v", err)
+	}
 	defer frontend.Close()
 
-	port := config["frontend_port"]
-	frontend.Bind(fmt.Sprintf("tcp://localhost:%s", port))
-
-	backend, _ := zmq.NewSocket(zmq.DEALER)
+	backend, err := zmq.NewSocket(zmq.DEALER)
+	if err != nil {
+		log.Fatalf("failed to create backend socket: %v", err)
+	}
 	defer backend.Close()
-	backend.Bind("tcp://localhost:5556")
+
+	port := config["frontend_port"]
+	if err := frontend.Bind(fmt.Sprintf("tcp://localhost:%s", port)); err != nil {
+		log.Fatalf("failed to bind frontend: %v", err)
+	}
+
+	if err := backend.Bind("tcp://localhost:5556"); err != nil {
+		log.Fatalf("failed to bind backend: %v", err)
+	}
+
 	for i := 0; i < 5; i++ {
 		go startWorker(i)
 	}
 
-	zmq.Proxy(frontend, backend, nil)
+	if err := zmq.Proxy(frontend, backend, nil); err != nil {
+		log.Fatalf("proxy error: %v", err)
+	}
 }
 
 func startWorker(id int) {
@@ -123,23 +137,28 @@ func startWorker(id int) {
 	socket.Connect("tcp://localhost:5556")
 
 	for {
-		zmqMsgBytes, _ := socket.RecvBytes(0)
+		zmqMsgBytes, err := socket.RecvBytes(0)
+		if err != nil {
+			log.Printf("Worker %d: error receiving message: %v", id, err)
+			continue
+		}
 		// Wrap in a Cap’n Proto message (read‑only)
 		msg, err := capnp.Unmarshal(zmqMsgBytes)
 		if err != nil {
-			log.Fatalf("capnp message: %v", err)
+			log.Printf("Worker %d: capnp message error: %v", id, err)
+			continue
 		}
 		record, err := bldrec.ReadRootRecord(msg)
 		if err != nil {
-			log.Fatalf("read struct: %v", err)
-		}
-		desc, _ := record.SDescription()
-		tmp, err := fmt.Printf("Worker %d received: %s\n", id, desc)
-		if err != nil {
+			log.Printf("Worker %d: read struct error: %v", id, err)
 			continue
 		}
-		//println(desc)
-		glblInstruments["debit-histogram"].(metric.Float64Histogram).Record(glblContext, float64(record.FValue()))
-		socket.Send(fmt.Sprintf("Reply from worker %d", tmp), 0)
+		desc, _ := record.SDescription()
+		fmt.Printf("Worker %d received: %s\n", id, desc)
+
+		if hist, ok := glblInstruments["debit-histogram"].(metric.Float64Histogram); ok {
+			hist.Record(glblContext, float64(record.FValue()))
+		}
+		socket.Send(fmt.Sprintf("Reply from worker %d", id), 0)
 	}
 }
