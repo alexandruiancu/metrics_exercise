@@ -1,6 +1,6 @@
 module me/loader
 
-go 1.23
+go 1.24
 
 require (
 	capnproto.org/go/capnp/v3 v3.1.0-alpha.2
