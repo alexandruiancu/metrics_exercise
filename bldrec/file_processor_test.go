@@ -3,7 +3,6 @@ package bldrec
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 )
@@ -337,13 +336,11 @@ func TestProcessFileWithValidContent(t *testing.T) {
 
 	// Create a test file with valid content
 	testFile := filepath.Join(inDir, "test.txt")
-	content := []string{
-		"date    description    amount    extra\n",
-		"01/15/2026    Test Description    123.45    extra1\n",
-		"02/28/2026    Another Description    99.99    extra2",
-	}
+	content := "date    description    amount    extra\n"
+	content += "01/15/2026    Test Description    123.45    extra1\n"
+	content += "02/28/2026    Another Description    99.99    extra2"
 
-	if err := os.WriteFile(testFile, []byte(strings.Join(content, "")), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -351,9 +348,8 @@ func TestProcessFileWithValidContent(t *testing.T) {
 	moveToHistory := func() error {
 		return os.Rename(testFile, filepath.Join(historyDir, "test.txt"))
 	}
-	moveToHistory()
 
-	records, err := fp.processLines([]string{content[1], content[2]})
+	records, err := fp.processFile(testFile, moveToHistory)
 	if err != nil {
 		t.Fatalf("processFile failed: %v", err)
 	}

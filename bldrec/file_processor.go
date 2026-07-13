@@ -130,6 +130,10 @@ func (fp *FileProcessor) processLines(lines []string) ([]Record, error) {
 	var record []string
 	for _, aggregate := range aggregates {
 		if len(aggregate[0]) > 0 {
+			// Skip header rows (field names like "date", "description", "amount", "extra")
+			if isHeaderRow(aggregate) {
+				continue
+			}
 			if len(record) > 0 {
 				rec, err := fp.capnpRecord(record)
 				if err == nil {
@@ -154,4 +158,24 @@ func (fp *FileProcessor) processLines(lines []string) ([]Record, error) {
 		}
 	}
 	return records, nil
+}
+
+// isHeaderRow checks if a row looks like a header (field names)
+func isHeaderRow(fields []string) bool {
+	if len(fields) == 0 {
+		return false
+	}
+	headerKeywords := map[string]bool{
+		"date":        true,
+		"description": true,
+		"amount":      true,
+		"extra":       true,
+	}
+	// Check if all fields are header keywords
+	for _, field := range fields {
+		if !headerKeywords[field] {
+			return false
+		}
+	}
+	return true
 }
