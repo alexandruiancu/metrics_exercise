@@ -9,7 +9,9 @@ Some software components are to be deployed as contains.
 ├── composer.yaml # Docker Compose configuration (third party observability software)
 └── .dockerignore  #Files to exclude from Docker builds
 
-# TODO Individual module Dockerfiles
+# Individual module Dockerfiles
+bldrec/Dockerfile
+loader/Dockerfile
 ```
 
 ## 🚀 Quick Start
