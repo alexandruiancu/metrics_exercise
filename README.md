@@ -1,4 +1,4 @@
-# Containerization Strategy
+# Docker Containerization Strategy for metrics_exercise
 
 Some software components are to be deployed as contains.
 
@@ -12,6 +12,8 @@ Some software components are to be deployed as contains.
 # Individual module Dockerfiles
 bldrec/Dockerfile
 loader/Dockerfile
+prometheus/Dockerfile
+otelcol/Dockerfile
 ```
 
 ## 🚀 Quick Start
@@ -26,7 +28,32 @@ docker compose -f composer.yaml logs -f
 # Stop services
 docker compose -f composer.yaml down
 ```
+
+## 📊 Service Architecture
+
+```
+┌─────────────┐      ZMQ      ┌─────────────┐
+│   bldrec    │ ◄──────────► │   loader    │
+│ (Producer)  │   (Router)   │ (Consumer)  │
+└─────────────┘              └─────────────┘
+       │                          │
+       └──────────┬───────────────┘
+                  │
+                  ▼
+           ┌─────────────┐
+           │   driver    │
+           │ (Orchestrator)│
+           └─────────────┘
+                  │
+         ┌────────┴────────┐
+         │                 │
+         ▼                 ▼
+   ┌──────────┐     ┌──────────┐
+   │Prometheus│     │OTel Col. │
+   │:9090     │     │:4317/8889│
+   └──────────┘     └──────────┘
+```
 ---
 
-**Last Updated**: 2026-07-14
-**Version**: 1.0.0
+**Last Updated**: 2026-07-16
+**Version**: 1.1.0
