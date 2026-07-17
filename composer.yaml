@@ -1,22 +1,125 @@
-version: '3.8'
-
-networks:
-  lab:
-    driver: bridge
+version: '3.9'
 
 services:
-  otelcol:
-    image: otel/opentelemetry-collector:latest
-    container_name: otelcol
-    hostname: col
-    networks:
-      - lab
-    ports:
-      - "4317:4317"
-    volumes:
-      - ./otel-collector-config.yml:/etc/otelcol/config.yaml
+  # Driver orchestrator
+  driver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: metrics_driver
     restart: unless-stopped
+    environment:
+      - TZ=UTC
+      - LOG_LEVEL=info
+    volumes:
+      - ./config:/app/config:ro
+      - driver-data:/app/data
+      - driver-logs:/app/logs
+    networks:
+      - metrics-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "app=metrics_exercise"
+      - "version=1.0.0"
 
+  # bldrec module - ZMQ producer
+  bldrec:
+    build:
+      context: ./bldrec
+      dockerfile: Dockerfile
+    container_name: metrics_bldrec
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+      - LOG_LEVEL=info
+    volumes:
+      - ./bldrec:/app:ro
+      - bldrec-data:/app/data
+      - bldrec-cache:/app/cache
+    networks:
+      - metrics-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9091/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "app=metrics_exercise"
+      - "module=bldrec"
+
+  # loader module - ZMQ consumer + OpenTelemetry
+  loader:
+    build:
+      context: ./loader
+      dockerfile: Dockerfile
+    container_name: metrics_loader
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+      - LOG_LEVEL=info
+      - OTLP_ENDPOINT=otel:4317
+    volumes:
+      - ./loader:/app:ro
+      - loader-data:/app/data
+      - loader-logs:/app/logs
+    networks:
+      - metrics-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9092/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "app=metrics_exercise"
+      - "module=loader"
+
+  # Prometheus - Metrics storage and visualization
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -28,3 +131,67 @@ services:
     volumes:
       - ./prometheus/config:/etc/prometheus/
     restart: unless-stopped
+  # OpenTelemetry Collector - Metrics collection pipeline
+  otel:
+    build:
+      context: ./otelcol
+      dockerfile: Dockerfile
+    container_name: metrics_otel
+    restart: unless-stopped
+    command: ["/app/otelcol", "--config=/app/config.yml"]
+    ports:
+      - "4317:4317"  # OTLP gRPC
+      - "4318:4318"  # OTLP HTTP
+      - "8889:8889"  # Prometheus exporter
+    volumes:
+      - otel-data:/app/data
+      - ./otelcol/otel-collector-config.yml:/app/config.yml:ro
+    networks:
+      - metrics-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:13133/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "app=metrics_exercise"
+      - "module=otel"
+
+networks:
+  metrics-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  driver-data:
+    driver: local
+  driver-logs:
+    driver: local
+  bldrec-data:
+    driver: local
+  bldrec-cache:
+    driver: local
+  loader-data:
+    driver: local
+  loader-logs:
+    driver: local
+  prometheus-data:
+    driver: local
+  otel-data:
+    driver: local
